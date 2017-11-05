@@ -26,6 +26,8 @@ class InMoovPlugin : public Plugin
 	bool stepDone;
 	/* Boolean for SR1 swingLegs method */
 	bool leftLeg;
+	/* Mode for SR1 disco method */
+	int discoMode = 0;
 	/* ADD BOOLEANS/VARIABLES HERE FOR NEW METHODS */
 
 
@@ -56,20 +58,29 @@ class InMoovPlugin : public Plugin
 		TB->addButton("SR1 RotateLLEG")
 			->sigClicked()
 			.connect(bind(&InMoovPlugin::changeOrientationL, this, 0.04));
+		TB->addButton("SR1 Disco")
+			->sigClicked()
+			.connect(bind(&InMoovPlugin::discoDance, this, 0.04));
 		/* SR1 Model Buttons */
 
 
 		/* Separator button in plugin gui */
-		TB->addButton("          ")->sigClicked().connect(bind(&InMoovPlugin::separate, this));
+		TB->addButton("          ")
+			->sigClicked()
+			.connect(bind(&InMoovPlugin::separate, this));
 
 
 		/* LEGS Model Buttons */
 		// Initialize stepDone boolean
 		stepDone = true;
 		// Adds Walk button to toolbar
-		TB->addButton("LEGS Walk")->sigClicked().connect(bind(&InMoovPlugin::walk, this));
+		TB->addButton("LEGS Walk")
+			->sigClicked()
+			.connect(bind(&InMoovPlugin::walk, this));
 		// Adds Reset button to toolbar
-		TB->addButton("LEGS Reset")->sigClicked().connect(bind(&InMoovPlugin::reset, this));
+		TB->addButton("LEGS Reset")
+			->sigClicked()
+			.connect(bind(&InMoovPlugin::reset, this));
 		/* LEGS Model Buttons */
 
 
@@ -189,6 +200,64 @@ class InMoovPlugin : public Plugin
    				bodyItems[i]->notifyKinematicStateChange(true);
 			}
 		}
+	}
+
+	// arthurdier -- collaboration 
+	void discoDance(double dq)
+	{
+
+		ItemList<BodyItem> bodyItems =
+		ItemTreeView::mainInstance()->selectedItems<BodyItem>();
+
+		for(size_t i=0; i < bodyItems.size(); ++i)
+		{
+	    		BodyPtr body = bodyItems[i]->body();
+
+			// Checks if SR1 model
+			if(body->numJoints() != 29)
+			{
+				MessageView::instance()->putln("Incorrect model! Please select the SR1 model.");
+			}
+			else
+			{
+				// Get joints from model
+	    		int rarm_shoulder_p = body->link("RARM_SHOULDER_P")->jointId();
+	    		int larm_shoulder_p = body->link("LARM_SHOULDER_P")->jointId();
+	    		int rarm_shoulder_y = body->link("RARM_SHOULDER_Y")->jointId();
+	    		int larm_shoulder_y = body->link("LARM_SHOULDER_Y")->jointId();
+	    		int rarm_elbow 		= body->link("RARM_ELBOW")	   ->jointId();
+				int larm_elbow 		= body->link("LARM_ELBOW")	   ->jointId();
+
+				// cross hands over 
+		    	if(discoMode <= 25){
+		    		body->joint(rarm_elbow)->q() 	  -= dq;
+		    		body->joint(larm_elbow)->q() 	  -= dq;
+        			body->joint(rarm_shoulder_y)->q() += dq;
+        			body->joint(larm_shoulder_y)->q() -= dq;
+        			discoMode += 1;
+		    	}
+		    	if(discoMode > 25 && discoMode < 90){
+		    		body->joint(larm_shoulder_p)->q() -= dq;
+		    		body->joint(rarm_shoulder_p)->q() -= dq;
+		    		discoMode += 1;
+		    	}
+		    	if(discoMode >= 90 && discoMode < 155){
+		    		if(discoMode > 103 && discoMode%2 == 0){
+			    		body->joint(rarm_elbow)->q() 	  += dq;
+			    		body->joint(larm_elbow)->q() 	  += dq;
+	        			body->joint(rarm_shoulder_y)->q() -= dq;
+	        			body->joint(larm_shoulder_y)->q() += dq;
+		    		}
+		    		body->joint(larm_shoulder_p)->q() += dq;
+		    		body->joint(rarm_shoulder_p)->q() += dq;
+		    		discoMode += 1;
+		    	}
+		    	if(discoMode == 155) discoMode = 0;
+
+		    	bodyItems[i]->notifyKinematicStateChange(true);
+			}
+
+    	}
 	}
 
 
